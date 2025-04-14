@@ -20,6 +20,11 @@ def validate_post_data(data) -> bool:
     return missing_fields
 
 
+def find_post_by_id(post_id, posts):
+    post = next((post for post in posts if str(post['id']) == str(post_id)), {})
+    return post
+
+
 def generate_new_id(data) -> int:
     new_id = max(post['id'] for post in data) + 1
     return new_id
@@ -44,6 +49,22 @@ def handle_posts():
         return jsonify(new_post), 201
 
     return jsonify(POSTS)  # GET request
+
+
+@app.route('/api/posts/<int:post_id>', methods=['DELETE'])
+def delete_post(post_id):
+    # Find the post with the given ID
+    post = find_post_by_id(post_id, POSTS)
+
+    # If the post wasn't found, return a 404 error
+    if not post:
+        return jsonify({"error": f"Post with id {post_id} not found."}), 404
+
+    # Remove the post from the list
+    POSTS.remove(post)
+
+    # Return the deleted post
+    return jsonify({"message": f"Post with id {post_id} has been deleted successfully."}), 200
 
 
 if __name__ == '__main__':
