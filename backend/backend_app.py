@@ -30,6 +30,27 @@ def generate_new_id(data) -> int:
     return new_id
 
 
+def search_posts_by_fields(title_term, content_term, posts):
+    result = []
+    seen_ids = set()
+
+    if title_term.strip():
+        title_term = title_term.lower()
+        for post in posts:
+            if title_term in post["title"].lower() and post["id"] not in seen_ids:
+                result.append(post)
+                seen_ids.add(post["id"])
+
+    if content_term.strip():
+        content_term = content_term.lower()
+        for post in posts:
+            if content_term in post["content"].lower() and post["id"] not in seen_ids:
+                result.append(post)
+                seen_ids.add(post["id"])
+
+    return result
+
+
 @app.route('/api/posts', methods=['GET', 'POST'])
 def handle_posts():
     if request.method == 'POST':
@@ -81,6 +102,15 @@ def update_post(post_id):
     post.update(new_post_data)
 
     return jsonify(post), 200
+
+
+@app.route('/api/posts/search')
+def search_post():
+    title_term = request.args.get('title', '')
+    content_term = request.args.get('content', '')
+
+    results = search_posts_by_fields(title_term, content_term, POSTS)
+    return jsonify(results)
 
 
 if __name__ == '__main__':
