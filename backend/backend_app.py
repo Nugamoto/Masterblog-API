@@ -57,6 +57,21 @@ def sort_posts(posts, field, order="asc"):
     return sorted_posts
 
 
+def paginate_items(items):
+    try:
+        page = int(request.args.get("page", 1))
+        limit = int(request.args.get("limit", 10))
+    except ValueError:
+        return jsonify({"error": "page and limit must be integers."}), 400, True
+
+    if page < 1 or limit < 1:
+        return jsonify({"error": "page and limit must be greater than 0."}), 400, True
+
+    start = (page - 1) * limit
+    end = start + limit
+    return items[start:end], None, False
+
+
 @app.route('/api/posts', methods=['GET', 'POST'])
 def handle_posts():
     if request.method == 'POST':
@@ -72,8 +87,9 @@ def handle_posts():
 
         return jsonify(new_post), 201
 
-    if not request.args:
-        return jsonify(POSTS)
+    paginated_items, error_response, is_error = paginate_items(POSTS)
+    if is_error:
+        return error_response
 
     required_fields = ["id", "title", "content"]
     field_to_sort = request.args.get("sort", "").lower()
@@ -89,9 +105,15 @@ def handle_posts():
     if not field_to_sort and sort_direction:
         return jsonify({"error": f"'sort'-parameter is required. Try: {required_fields}"}), 400
 
-    sorted_posts = sort_posts(POSTS, field_to_sort, sort_direction)
+    if field_to_sort:
+        sorted_posts = sort_posts(POSTS, field_to_sort, sort_direction)
+    else:
+        sorted_posts = POSTS
 
-    return sorted_posts
+    paginated_items, error_response, is_error = paginate_items(sorted_posts)
+    if is_error:
+        return error_response
+    return jsonify(paginated_items)
 
 
 @app.route('/api/posts/<int:post_id>', methods=['DELETE'])
@@ -132,7 +154,10 @@ def search_post():
     content_term = request.args.get('content', '')
 
     results = search_posts_by_fields(title_term, content_term, POSTS)
-    return jsonify(results)
+    paginated_items, error_response, is_error = paginate_items(results)
+    if is_error:
+        return error_response
+    return jsonify(paginated_items)
 
 
 if __name__ == '__main__':
