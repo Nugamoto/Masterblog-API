@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
@@ -5,18 +7,37 @@ app = Flask(__name__)
 CORS(app)  # This will enable CORS for all routes
 
 POSTS = [
-    {"id": 1, "title": "First post", "content": "This is the first post."},
-    {"id": 2, "title": "Second post", "content": "This is the second post."},
+    {
+        "id": 1,
+        "title": "First post",
+        "content": "This is the first post.",
+        "author": "John Doe",
+        "date": "2025-04-14",
+        "category": "Tech",
+        "tags": ["flask", "api"],
+        "comments": []
+    },
+    {
+        "id": 2,
+        "title": "Second post",
+        "content": "This is the second post.",
+        "author": "Jane Doe",
+        "date": "2025-04-14",
+        "category": "Lifestyle",
+        "tags": ["health", "fitness"],
+        "comments": []
+    },
 ]
 
 
-def validate_post_data(data) -> bool:
+def validate_post_data(data):
     missing_fields = []
     if 'title' not in data or not data['title']:
         missing_fields.append('title')
     if 'content' not in data or not data['content']:
         missing_fields.append('content')
-
+    if 'author' not in data or not data['author']:
+        missing_fields.append('author')
     return missing_fields
 
 
@@ -80,6 +101,14 @@ def handle_posts():
         missing_data = validate_post_data(new_post)
         if missing_data:
             return jsonify({"error": f"Invalid data. Data requires {missing_data}"}), 400
+
+        # Set default date to current date if not provided
+        if 'date' not in new_post or not new_post['date']:
+            new_post["date"] = datetime.now().strftime("%Y-%m-%d")
+        # Set defaults for optional fields
+        new_post.setdefault("category", "")
+        new_post.setdefault("tags", [])
+        new_post.setdefault("comments", [])
 
         new_post["id"] = generate_new_id(POSTS)
 
@@ -152,12 +181,37 @@ def update_post(post_id):
 def search_post():
     title_term = request.args.get('title', '')
     content_term = request.args.get('content', '')
+    category = request.args.get('category', '')
+    tag = request.args.get('tag', '')
 
-    results = search_posts_by_fields(title_term, content_term, POSTS)
+    # If no title or content is provided, start with all posts; otherwise, filter by title/content
+    results = POSTS if not (title_term.strip() or content_term.strip()) else search_posts_by_fields(title_term,
+                                                                                                    content_term, POSTS)
+
+    if category:
+        results = [post for post in results if category.lower() in post.get("category", "").lower()]
+    if tag:
+        results = [post for post in results if tag.lower() in [t.lower() for t in post.get("tags", [])]]
+
     paginated_items, error_response, is_error = paginate_items(results)
     if is_error:
         return error_response
     return jsonify(paginated_items)
+
+
+@app.route('/api/posts/<int:post_id>/comments', methods=['POST'])
+def add_comment(post_id):
+    post = find_post_by_id(post_id, POSTS)
+    if not post:
+        return jsonify({"error": f"Post with id {post_id} not found."}), 404
+
+    new_comment = request.get_json()
+    if "author" not in new_comment or "text" not in new_comment:
+        return jsonify({"error": "Comment must include 'author' and 'text'"}), 400
+
+    new_comment["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+    post.setdefault("comments", []).append(new_comment)
+    return jsonify(post), 201
 
 
 if __name__ == '__main__':
