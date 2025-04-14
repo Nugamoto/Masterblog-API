@@ -51,6 +51,12 @@ def search_posts_by_fields(title_term, content_term, posts):
     return result
 
 
+def sort_posts(posts, field, order="asc"):
+    order_parameter = (order == "desc")
+    sorted_posts = sorted(posts, key=lambda x: x.get(field, ""), reverse=order_parameter)
+    return sorted_posts
+
+
 @app.route('/api/posts', methods=['GET', 'POST'])
 def handle_posts():
     if request.method == 'POST':
@@ -60,16 +66,32 @@ def handle_posts():
         if missing_data:
             return jsonify({"error": f"Invalid data. Data requires {missing_data}"}), 400
 
-        # Generate a new ID for the post
         new_post["id"] = generate_new_id(POSTS)
 
-        # Add the new post to our list
         POSTS.append(new_post)
 
-        # Return the new post data to the client
         return jsonify(new_post), 201
 
-    return jsonify(POSTS)  # GET request
+    if not request.args:
+        return jsonify(POSTS)
+
+    required_fields = ["id", "title", "content"]
+    field_to_sort = request.args.get("sort", "").lower()
+    if field_to_sort and not field_to_sort in required_fields:
+        return jsonify({"error": f"'{field_to_sort}' is not a valid field to sort. Try: {required_fields}"}), 400
+
+    required_direction = ["asc", "desc"]
+    sort_direction = request.args.get("direction", "").lower()
+    if sort_direction and not sort_direction in required_direction:
+        return jsonify(
+            {"error": f"'{sort_direction}' is not a valid direction to sort. Try: {required_direction}"}), 400
+
+    if not field_to_sort and sort_direction:
+        return jsonify({"error": f"'sort'-parameter is required. Try: {required_fields}"}), 400
+
+    sorted_posts = sort_posts(POSTS, field_to_sort, sort_direction)
+
+    return sorted_posts
 
 
 @app.route('/api/posts/<int:post_id>', methods=['DELETE'])
