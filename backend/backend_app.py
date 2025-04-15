@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from passlib.hash import pbkdf2_sha256
 
 load_dotenv()
@@ -16,6 +18,12 @@ CORS(app)  # This will enable CORS for all routes (Cross-Origin Resource Sharing
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
 jwt = JWTManager(app)
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["100 per hour"]
+)
 
 USERS = []  # Dummy-Speicher für Benutzer (später kann hier eine DB hin)
 
@@ -105,6 +113,7 @@ def paginate_items(items):
 
 
 @app.route("/api/register", methods=["POST"])
+@limiter.limit("10 per hour")
 def register():
     data = request.get_json()
     username = data.get("username")
@@ -122,6 +131,7 @@ def register():
 
 
 @app.route("/api/login", methods=["POST"])
+@limiter.limit("5 per minute")
 def login():
     data = request.get_json()
     username = data.get("username")
