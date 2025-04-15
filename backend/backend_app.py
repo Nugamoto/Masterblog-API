@@ -1,10 +1,23 @@
+import os
 from datetime import datetime
 
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from passlib.hash import pbkdf2_sha256
+
+load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # This will enable CORS for all routes
+
+CORS(app)  # This will enable CORS for all routes (Cross-Origin Resource Sharing)
+
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+
+jwt = JWTManager(app)
+
+USERS = []  # Dummy-Speicher für Benutzer (später kann hier eine DB hin)
 
 POSTS = [
     {
@@ -36,8 +49,6 @@ def validate_post_data(data):
         missing_fields.append('title')
     if 'content' not in data or not data['content']:
         missing_fields.append('content')
-    if 'author' not in data or not data['author']:
-        missing_fields.append('author')
     return missing_fields
 
 
@@ -93,28 +104,61 @@ def paginate_items(items):
     return items[start:end], None, False
 
 
+@app.route("/api/register", methods=["POST"])
+def register():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+
+    if any(user["username"] == username for user in USERS):
+        return jsonify({"error": "Username already exists"}), 400
+
+    hashed_password = pbkdf2_sha256.hash(password)
+    USERS.append({"username": username, "password": hashed_password})
+    return jsonify({"message": f"User {username} registered successfully"}), 201
+
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+
+    user = next((user for user in USERS if user["username"] == username), None)
+    if not user or not pbkdf2_sha256.verify(password, user["password"]):
+        return jsonify({"error": "Invalid username or password"}), 401
+
+    access_token = create_access_token(identity=username)
+    return jsonify(access_token=access_token), 200
+
+
 @app.route('/api/posts', methods=['GET', 'POST'])
 def handle_posts():
     if request.method == 'POST':
-        new_post = request.get_json()
+        @jwt_required()
+        def protected_create_post():
+            new_post = request.get_json()
 
-        missing_data = validate_post_data(new_post)
-        if missing_data:
-            return jsonify({"error": f"Invalid data. Data requires {missing_data}"}), 400
+            missing_data = validate_post_data(new_post)
+            if missing_data:
+                return jsonify({"error": f"Invalid data. Data requires {missing_data}"}), 400
 
-        # Set default date to current date if not provided
-        if 'date' not in new_post or not new_post['date']:
-            new_post["date"] = datetime.now().strftime("%Y-%m-%d")
-        # Set defaults for optional fields
-        new_post.setdefault("category", "")
-        new_post.setdefault("tags", [])
-        new_post.setdefault("comments", [])
+            if 'date' not in new_post or not new_post['date']:
+                new_post["date"] = datetime.now().strftime("%Y-%m-%d")
+            new_post.setdefault("category", "")
+            new_post.setdefault("tags", [])
+            new_post.setdefault("comments", [])
 
-        new_post["id"] = generate_new_id(POSTS)
+            new_post["id"] = generate_new_id(POSTS)
+            new_post["author"] = get_jwt_identity()
 
-        POSTS.append(new_post)
+            POSTS.append(new_post)
+            return jsonify(new_post), 201
 
-        return jsonify(new_post), 201
+        return protected_create_post()
 
     paginated_items, error_response, is_error = paginate_items(POSTS)
     if is_error:
@@ -146,22 +190,23 @@ def handle_posts():
 
 
 @app.route('/api/posts/<int:post_id>', methods=['DELETE'])
+@jwt_required()
 def delete_post(post_id):
-    # Find the post with the given ID
     post = find_post_by_id(post_id, POSTS)
 
-    # If the post wasn't found, return a 404 error
     if not post:
         return jsonify({"error": f"Post with id {post_id} not found."}), 404
 
-    # Remove the post from the list
-    POSTS.remove(post)
+    current_user = get_jwt_identity()
+    if post.get("author") != current_user:
+        return jsonify({"error": "You are not authorized to delete this post."}), 403
 
-    # Return the deleted post
+    POSTS.remove(post)
     return jsonify({"message": f"Post with id {post_id} has been deleted successfully."}), 200
 
 
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
+@jwt_required()
 def update_post(post_id):
     new_post_data = request.get_json()
     missing_data = validate_post_data(new_post_data)
@@ -172,8 +217,11 @@ def update_post(post_id):
     if not post:
         return jsonify({"error": f"Post with id {post_id} not found."}), 404
 
-    post.update(new_post_data)
+    current_user = get_jwt_identity()
+    if post.get("author") != current_user:
+        return jsonify({"error": "You are not authorized to update this post."}), 403
 
+    post.update(new_post_data)
     return jsonify(post), 200
 
 
@@ -184,7 +232,6 @@ def search_post():
     category = request.args.get('category', '')
     tag = request.args.get('tag', '')
 
-    # If no title or content is provided, start with all posts; otherwise, filter by title/content
     results = POSTS if not (title_term.strip() or content_term.strip()) else search_posts_by_fields(title_term,
                                                                                                     content_term, POSTS)
 
