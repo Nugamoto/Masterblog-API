@@ -112,7 +112,7 @@ def paginate_items(items):
     return items[start:end], None, False
 
 
-@app.route("/api/register", methods=["POST"])
+@app.route("/api/v1/register", methods=["POST"])
 @limiter.limit("10 per hour")
 def register():
     data = request.get_json()
@@ -130,7 +130,7 @@ def register():
     return jsonify({"message": f"User {username} registered successfully"}), 201
 
 
-@app.route("/api/login", methods=["POST"])
+@app.route("/api/v1/login", methods=["POST"])
 @limiter.limit("5 per minute")
 def login():
     data = request.get_json()
@@ -145,7 +145,7 @@ def login():
     return jsonify(access_token=access_token), 200
 
 
-@app.route('/api/posts', methods=['GET', 'POST'])
+@app.route('/api/v1/posts', methods=['GET', 'POST'])
 def handle_posts():
     if request.method == 'POST':
         @jwt_required()
@@ -199,7 +199,7 @@ def handle_posts():
     return jsonify(paginated_items)
 
 
-@app.route('/api/posts/<int:post_id>', methods=['DELETE'])
+@app.route('/api/v1/posts/<int:post_id>', methods=['DELETE'])
 @jwt_required()
 def delete_post(post_id):
     post = find_post_by_id(post_id, POSTS)
@@ -215,7 +215,7 @@ def delete_post(post_id):
     return jsonify({"message": f"Post with id {post_id} has been deleted successfully."}), 200
 
 
-@app.route('/api/posts/<int:post_id>', methods=['PUT'])
+@app.route('/api/v1/posts/<int:post_id>', methods=['PUT'])
 @jwt_required()
 def update_post(post_id):
     new_post_data = request.get_json()
@@ -235,7 +235,7 @@ def update_post(post_id):
     return jsonify(post), 200
 
 
-@app.route('/api/posts/search')
+@app.route('/api/v1/posts/search')
 def search_post():
     title_term = request.args.get('title', '')
     content_term = request.args.get('content', '')
@@ -256,7 +256,7 @@ def search_post():
     return jsonify(paginated_items)
 
 
-@app.route('/api/posts/<int:post_id>/comments', methods=['POST'])
+@app.route('/api/v1/posts/<int:post_id>/comments', methods=['POST'])
 def add_comment(post_id):
     post = find_post_by_id(post_id, POSTS)
     if not post:
