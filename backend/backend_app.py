@@ -99,7 +99,22 @@ def search_posts_by_fields(title_term, content_term, author_term, date_term, cat
 
 def sort_posts(posts, field, order="asc"):
     order_parameter = (order == "desc")
-    sorted_posts = sorted(posts, key=lambda x: x.get(field, ""), reverse=order_parameter)
+
+    def sort_key(post):
+        if field == "date":
+            try:
+                return datetime.strptime(post.get("date", ""), "%Y-%m-%d")
+            except ValueError:
+                return datetime.min
+        if field == "comments":
+            return len(post.get("comments", []))
+        if field == "tags":
+            tag_terms = [t.strip().lower() for t in request.args.get("tag", "").split(",") if t.strip()]
+            post_tags = [t.lower() for t in post.get("tags", [])]
+            return sum(1 for tag in tag_terms if tag in post_tags)
+        return post.get(field, "")
+
+    sorted_posts = sorted(posts, key=sort_key, reverse=order_parameter)
     return sorted_posts
 
 
@@ -180,7 +195,7 @@ def handle_posts():
     if is_error:
         return error_response
 
-    required_fields = ["id", "title", "content"]
+    required_fields = ["id", "title", "content", "author", "date", "category", "comments", "tags"]
     field_to_sort = request.args.get("sort", "").lower()
     if field_to_sort and not field_to_sort in required_fields:
         return jsonify({"error": f"'{field_to_sort}' is not a valid field to sort. Try: {required_fields}"}), 400
