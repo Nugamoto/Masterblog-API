@@ -231,6 +231,17 @@ def update_post(post_id):
     if post.get("author") != current_user:
         return jsonify({"error": "You are not authorized to update this post."}), 403
 
+    # Remove 'author' if someone tries to override it
+    if "author" in new_post_data:
+        del new_post_data["author"]
+
+    # Validate 'date' format if provided
+    if "date" in new_post_data:
+        try:
+            datetime.strptime(new_post_data["date"], "%Y-%m-%d")
+        except ValueError:
+            return jsonify({"error": "Date must be in format YYYY-MM-DD"}), 400
+
     post.update(new_post_data)
     return jsonify(post), 200
 
