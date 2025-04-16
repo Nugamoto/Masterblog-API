@@ -42,9 +42,13 @@ def load_json(filepath=POSTS_FILE):
 def save_json(content, filepath=POSTS_FILE):
     if not isinstance(content, list):
         raise TypeError("Provided content must be a list")
+
+    temp_filepath = filepath + ".tmp"
+
     try:
-        with open(filepath, "w", encoding="utf-8") as fileobject:
-            json.dump(content, fileobject, indent=4)
+        with open(temp_filepath, "w", encoding="utf-8") as temp_file:
+            json.dump(content, temp_file, indent=4)
+        os.replace(temp_filepath, filepath)
     except (IOError, OSError) as e:
         raise IOError(f"Failed to write to file {filepath}") from e
     except TypeError as e:
