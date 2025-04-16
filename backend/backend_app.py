@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime
 
@@ -27,108 +28,27 @@ limiter = Limiter(
 
 USERS = []  # Dummy-Speicher für Benutzer (später kann hier eine DB hin)
 
-POSTS = [
-    {
-        "id": 1,
-        "title": "Building REST APIs with Flask",
-        "content": "A complete guide to creating RESTful APIs using Flask.",
-        "author": "Alice Smith",
-        "date": "2025-04-01",
-        "category": "Development",
-        "tags": ["flask", "api", "backend"],
-        "comments": [{"author": "John", "text": "Great post!", "timestamp": "2025-04-02 10:15"}]
-    },
-    {
-        "id": 2,
-        "title": "10 Healthy Habits",
-        "content": "Simple daily habits for a healthier life.",
-        "author": "Bob Jones",
-        "date": "2025-04-03",
-        "category": "Lifestyle",
-        "tags": ["health", "wellness"],
-        "comments": []
-    },
-    {
-        "id": 3,
-        "title": "Mastering Python Lists",
-        "content": "Everything you need to know about lists in Python.",
-        "author": "Alice Smith",
-        "date": "2025-04-05",
-        "category": "Programming",
-        "tags": ["python", "lists"],
-        "comments": [{"author": "Jane", "text": "Very informative!", "timestamp": "2025-04-06 09:20"}]
-    },
-    {
-        "id": 4,
-        "title": "Yoga for Beginners",
-        "content": "A step-by-step guide to getting started with yoga.",
-        "author": "Carol White",
-        "date": "2025-04-07",
-        "category": "Fitness",
-        "tags": ["yoga", "health"],
-        "comments": []
-    },
-    {
-        "id": 5,
-        "title": "Exploring JavaScript ES6",
-        "content": "New features in ES6 and how to use them.",
-        "author": "Dave Green",
-        "date": "2025-04-08",
-        "category": "Web Development",
-        "tags": ["javascript", "es6"],
-        "comments": [{"author": "Tom", "text": "Thanks for this summary.", "timestamp": "2025-04-09 12:10"}]
-    },
-    {
-        "id": 6,
-        "title": "Traveling on a Budget",
-        "content": "How to see the world without breaking the bank.",
-        "author": "Eve Black",
-        "date": "2025-04-10",
-        "category": "Travel",
-        "tags": ["budget", "travel"],
-        "comments": []
-    },
-    {
-        "id": 7,
-        "title": "Introduction to Machine Learning",
-        "content": "Start your journey into machine learning.",
-        "author": "Frank Lee",
-        "date": "2025-04-11",
-        "category": "AI",
-        "tags": ["machine learning", "ai"],
-        "comments": [{"author": "Eve", "text": "Looking forward to part 2.", "timestamp": "2025-04-11 16:45"}]
-    },
-    {
-        "id": 8,
-        "title": "Mindfulness Meditation Basics",
-        "content": "Learn how to meditate and reduce stress.",
-        "author": "Grace Kim",
-        "date": "2025-04-12",
-        "category": "Mental Health",
-        "tags": ["mindfulness", "meditation"],
-        "comments": []
-    },
-    {
-        "id": 9,
-        "title": "CSS Grid vs Flexbox",
-        "content": "Which layout technique should you choose?",
-        "author": "Hank Moore",
-        "date": "2025-04-13",
-        "category": "Design",
-        "tags": ["css", "grid", "flexbox"],
-        "comments": [{"author": "Sam", "text": "This cleared up my confusion!", "timestamp": "2025-04-13 14:00"}]
-    },
-    {
-        "id": 10,
-        "title": "The Power of Habit",
-        "content": "Understanding how habits work and how to build better ones.",
-        "author": "Ivy Rose",
-        "date": "2025-04-14",
-        "category": "Self Improvement",
-        "tags": ["habits", "productivity"],
-        "comments": [{"author": "Frank", "text": "Life-changing content.", "timestamp": "2025-04-14 18:30"}]
-    }
-]
+POSTS_FILE = os.path.join(os.path.dirname(__file__), "posts.json")
+
+
+def load_json(filepath=POSTS_FILE):
+    try:
+        with open(filepath, "r", encoding="utf-8") as fileobject:
+            return json.load(fileobject)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def save_json(content, filepath=POSTS_FILE):
+    if not isinstance(content, list):
+        raise TypeError("Provided content must be a list")
+    try:
+        with open(filepath, "w", encoding="utf-8") as fileobject:
+            json.dump(content, fileobject, indent=4)
+    except (IOError, OSError) as e:
+        raise IOError(f"Failed to write to file {filepath}") from e
+    except TypeError as e:
+        raise TypeError("Provided content could not be serialized to JSON") from e
 
 
 def validate_post_data(data):
@@ -146,8 +66,9 @@ def find_post_by_id(post_id, posts):
 
 
 def generate_new_id(data) -> int:
-    new_id = max(post['id'] for post in data) + 1
-    return new_id
+    if not data:
+        return 1
+    return max(post['id'] for post in data) + 1
 
 
 def search_posts_by_fields(title_term, content_term, author_term, date_term, category_term, tag_term, posts):
@@ -251,6 +172,7 @@ def handle_posts():
     if request.method == 'POST':
         @jwt_required()
         def protected_create_post():
+            all_posts = load_json()
             new_post = request.get_json()
 
             missing_data = validate_post_data(new_post)
@@ -263,15 +185,18 @@ def handle_posts():
             new_post.setdefault("tags", [])
             new_post.setdefault("comments", [])
 
-            new_post["id"] = generate_new_id(POSTS)
+            new_post["id"] = generate_new_id(all_posts)
             new_post["author"] = get_jwt_identity()
 
-            POSTS.append(new_post)
+            all_posts.append(new_post)
+            save_json(all_posts)
             return jsonify(new_post), 201
 
         return protected_create_post()
 
-    paginated_items, error_response, is_error = paginate_items(POSTS)
+    posts = load_json()
+
+    paginated_items, error_response, is_error = paginate_items(posts)
     if is_error:
         return error_response
 
@@ -290,9 +215,9 @@ def handle_posts():
         return jsonify({"error": f"'sort'-parameter is required. Try: {required_fields}"}), 400
 
     if field_to_sort:
-        sorted_posts = sort_posts(POSTS, field_to_sort, sort_direction)
+        sorted_posts = sort_posts(posts, field_to_sort, sort_direction)
     else:
-        sorted_posts = POSTS
+        sorted_posts = posts
 
     paginated_items, error_response, is_error = paginate_items(sorted_posts)
     if is_error:
@@ -303,7 +228,8 @@ def handle_posts():
 @app.route('/api/v1/posts/<int:post_id>', methods=['DELETE'])
 @jwt_required()
 def delete_post(post_id):
-    post = find_post_by_id(post_id, POSTS)
+    posts = load_json()
+    post = find_post_by_id(post_id, posts)
 
     if not post:
         return jsonify({"error": f"Post with id {post_id} not found."}), 404
@@ -312,19 +238,21 @@ def delete_post(post_id):
     if post.get("author") != current_user:
         return jsonify({"error": "You are not authorized to delete this post."}), 403
 
-    POSTS.remove(post)
+    posts.remove(post)
+    save_json(posts)
     return jsonify({"message": f"Post with id {post_id} has been deleted successfully."}), 200
 
 
 @app.route('/api/v1/posts/<int:post_id>', methods=['PUT'])
 @jwt_required()
 def update_post(post_id):
+    posts = load_json()
     new_post_data = request.get_json()
     missing_data = validate_post_data(new_post_data)
     if missing_data:
         return jsonify({"error": f"Invalid data. Data requires {missing_data}"}), 400
 
-    post = find_post_by_id(post_id, POSTS)
+    post = find_post_by_id(post_id, posts)
     if not post:
         return jsonify({"error": f"Post with id {post_id} not found."}), 404
 
@@ -344,6 +272,7 @@ def update_post(post_id):
             return jsonify({"error": "Date must be in format YYYY-MM-DD"}), 400
 
     post.update(new_post_data)
+    save_json(posts)
     return jsonify(post), 200
 
 
@@ -356,7 +285,8 @@ def search_post():
     category_term = request.args.get('category', '')
     tag_term = request.args.get('tag', '')
 
-    results = search_posts_by_fields(title_term, content_term, author_term, date_term, category_term, tag_term, POSTS)
+    posts = load_json()
+    results = search_posts_by_fields(title_term, content_term, author_term, date_term, category_term, tag_term, posts)
 
     paginated_items, error_response, is_error = paginate_items(results)
     if is_error:
@@ -367,7 +297,8 @@ def search_post():
 @app.route('/api/v1/posts/<int:post_id>/comments', methods=['POST'])
 @jwt_required()
 def add_comment(post_id):
-    post = find_post_by_id(post_id, POSTS)
+    posts = load_json()
+    post = find_post_by_id(post_id, posts)
     if not post:
         return jsonify({"error": f"Post with id {post_id} not found."}), 404
 
@@ -382,6 +313,7 @@ def add_comment(post_id):
     }
 
     post.setdefault("comments", []).append(new_comment_data)
+    save_json(posts)
     return jsonify(post), 201
 
 

@@ -1,0 +1,102 @@
+[
+    {
+        "id": 1,
+        "title": "Building REST APIs with Flask",
+        "content": "A complete guide to creating RESTful APIs using Flask.",
+        "author": "Alice Smith",
+        "date": "2025-04-01",
+        "category": "Development",
+        "tags": ["flask", "api", "backend"],
+        "comments": [{"author": "John", "text": "Great post!", "timestamp": "2025-04-02 10:15"}]
+    },
+    {
+        "id": 2,
+        "title": "10 Healthy Habits",
+        "content": "Simple daily habits for a healthier life.",
+        "author": "Bob Jones",
+        "date": "2025-04-03",
+        "category": "Lifestyle",
+        "tags": ["health", "wellness"],
+        "comments": []
+    },
+    {
+        "id": 3,
+        "title": "Mastering Python Lists",
+        "content": "Everything you need to know about lists in Python.",
+        "author": "Alice Smith",
+        "date": "2025-04-05",
+        "category": "Programming",
+        "tags": ["python", "lists"],
+        "comments": [{"author": "Jane", "text": "Very informative!", "timestamp": "2025-04-06 09:20"}]
+    },
+    {
+        "id": 4,
+        "title": "Yoga for Beginners",
+        "content": "A step-by-step guide to getting started with yoga.",
+        "author": "Carol White",
+        "date": "2025-04-07",
+        "category": "Fitness",
+        "tags": ["yoga", "health"],
+        "comments": []
+    },
+    {
+        "id": 5,
+        "title": "Exploring JavaScript ES6",
+        "content": "New features in ES6 and how to use them.",
+        "author": "Dave Green",
+        "date": "2025-04-08",
+        "category": "Web Development",
+        "tags": ["javascript", "es6"],
+        "comments": [{"author": "Tom", "text": "Thanks for this summary.", "timestamp": "2025-04-09 12:10"}]
+    },
+    {
+        "id": 6,
+        "title": "Traveling on a Budget",
+        "content": "How to see the world without breaking the bank.",
+        "author": "Eve Black",
+        "date": "2025-04-10",
+        "category": "Travel",
+        "tags": ["budget", "travel"],
+        "comments": []
+    },
+    {
+        "id": 7,
+        "title": "Introduction to Machine Learning",
+        "content": "Start your journey into machine learning.",
+        "author": "Frank Lee",
+        "date": "2025-04-11",
+        "category": "AI",
+        "tags": ["machine learning", "ai"],
+        "comments": [{"author": "Eve", "text": "Looking forward to part 2.", "timestamp": "2025-04-11 16:45"}]
+    },
+    {
+        "id": 8,
+        "title": "Mindfulness Meditation Basics",
+        "content": "Learn how to meditate and reduce stress.",
+        "author": "Grace Kim",
+        "date": "2025-04-12",
+        "category": "Mental Health",
+        "tags": ["mindfulness", "meditation"],
+        "comments": []
+    },
+    {
+        "id": 9,
+        "title": "CSS Grid vs Flexbox",
+        "content": "Which layout technique should you choose?",
+        "author": "Hank Moore",
+        "date": "2025-04-13",
+        "category": "Design",
+        "tags": ["css", "grid", "flexbox"],
+        "comments": [{"author": "Sam", "text": "This cleared up my confusion!", "timestamp": "2025-04-13 14:00"}]
+    },
+    {
+        "id": 10,
+        "title": "The Power of Habit",
+        "content": "Understanding how habits work and how to build better ones.",
+        "author": "Ivy Rose",
+        "date": "2025-04-14",
+        "category": "Self Improvement",
+        "tags": ["habits", "productivity"],
+        "comments": [{"author": "Frank", "text": "Life-changing content.", "timestamp": "2025-04-14 18:30"}]
+    }
+]
