@@ -8,6 +8,7 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_swagger_ui import get_swaggerui_blueprint
 from passlib.hash import pbkdf2_sha256
 
 load_dotenv()
@@ -321,5 +322,15 @@ def add_comment(post_id):
     return jsonify(post), 201
 
 
+SWAGGER_URL = "/api/docs"  # URL unter der Swagger erreichbar ist
+API_URL = "/static/masterblog.json"  # Pfad zur Swagger-Definition
+
+swagger_ui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={"app_name": "Masterblog API"}
+)
+
+app.register_blueprint(swagger_ui_blueprint, url_prefix=SWAGGER_URL)
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5002, debug=True)
