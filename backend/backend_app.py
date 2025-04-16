@@ -30,24 +30,104 @@ USERS = []  # Dummy-Speicher für Benutzer (später kann hier eine DB hin)
 POSTS = [
     {
         "id": 1,
-        "title": "First post",
-        "content": "This is the first post.",
-        "author": "John Doe",
-        "date": "2025-04-14",
-        "category": "Tech",
-        "tags": ["flask", "api"],
-        "comments": []
+        "title": "Building REST APIs with Flask",
+        "content": "A complete guide to creating RESTful APIs using Flask.",
+        "author": "Alice Smith",
+        "date": "2025-04-01",
+        "category": "Development",
+        "tags": ["flask", "api", "backend"],
+        "comments": [{"author": "John", "text": "Great post!", "timestamp": "2025-04-02 10:15"}]
     },
     {
         "id": 2,
-        "title": "Second post",
-        "content": "This is the second post.",
-        "author": "Jane Doe",
-        "date": "2025-04-14",
+        "title": "10 Healthy Habits",
+        "content": "Simple daily habits for a healthier life.",
+        "author": "Bob Jones",
+        "date": "2025-04-03",
         "category": "Lifestyle",
-        "tags": ["health", "fitness"],
+        "tags": ["health", "wellness"],
         "comments": []
     },
+    {
+        "id": 3,
+        "title": "Mastering Python Lists",
+        "content": "Everything you need to know about lists in Python.",
+        "author": "Alice Smith",
+        "date": "2025-04-05",
+        "category": "Programming",
+        "tags": ["python", "lists"],
+        "comments": [{"author": "Jane", "text": "Very informative!", "timestamp": "2025-04-06 09:20"}]
+    },
+    {
+        "id": 4,
+        "title": "Yoga for Beginners",
+        "content": "A step-by-step guide to getting started with yoga.",
+        "author": "Carol White",
+        "date": "2025-04-07",
+        "category": "Fitness",
+        "tags": ["yoga", "health"],
+        "comments": []
+    },
+    {
+        "id": 5,
+        "title": "Exploring JavaScript ES6",
+        "content": "New features in ES6 and how to use them.",
+        "author": "Dave Green",
+        "date": "2025-04-08",
+        "category": "Web Development",
+        "tags": ["javascript", "es6"],
+        "comments": [{"author": "Tom", "text": "Thanks for this summary.", "timestamp": "2025-04-09 12:10"}]
+    },
+    {
+        "id": 6,
+        "title": "Traveling on a Budget",
+        "content": "How to see the world without breaking the bank.",
+        "author": "Eve Black",
+        "date": "2025-04-10",
+        "category": "Travel",
+        "tags": ["budget", "travel"],
+        "comments": []
+    },
+    {
+        "id": 7,
+        "title": "Introduction to Machine Learning",
+        "content": "Start your journey into machine learning.",
+        "author": "Frank Lee",
+        "date": "2025-04-11",
+        "category": "AI",
+        "tags": ["machine learning", "ai"],
+        "comments": [{"author": "Eve", "text": "Looking forward to part 2.", "timestamp": "2025-04-11 16:45"}]
+    },
+    {
+        "id": 8,
+        "title": "Mindfulness Meditation Basics",
+        "content": "Learn how to meditate and reduce stress.",
+        "author": "Grace Kim",
+        "date": "2025-04-12",
+        "category": "Mental Health",
+        "tags": ["mindfulness", "meditation"],
+        "comments": []
+    },
+    {
+        "id": 9,
+        "title": "CSS Grid vs Flexbox",
+        "content": "Which layout technique should you choose?",
+        "author": "Hank Moore",
+        "date": "2025-04-13",
+        "category": "Design",
+        "tags": ["css", "grid", "flexbox"],
+        "comments": [{"author": "Sam", "text": "This cleared up my confusion!", "timestamp": "2025-04-13 14:00"}]
+    },
+    {
+        "id": 10,
+        "title": "The Power of Habit",
+        "content": "Understanding how habits work and how to build better ones.",
+        "author": "Ivy Rose",
+        "date": "2025-04-14",
+        "category": "Self Improvement",
+        "tags": ["habits", "productivity"],
+        "comments": [{"author": "Frank", "text": "Life-changing content.", "timestamp": "2025-04-14 18:30"}]
+    }
 ]
 
 
@@ -285,17 +365,23 @@ def search_post():
 
 
 @app.route('/api/v1/posts/<int:post_id>/comments', methods=['POST'])
+@jwt_required()
 def add_comment(post_id):
     post = find_post_by_id(post_id, POSTS)
     if not post:
         return jsonify({"error": f"Post with id {post_id} not found."}), 404
 
     new_comment = request.get_json()
-    if "author" not in new_comment or "text" not in new_comment:
-        return jsonify({"error": "Comment must include 'author' and 'text'"}), 400
+    if "text" not in new_comment:
+        return jsonify({"error": "Comment must include 'text'"}), 400
 
-    new_comment["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-    post.setdefault("comments", []).append(new_comment)
+    new_comment_data = {
+        "author": get_jwt_identity(),
+        "text": new_comment["text"],
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
+    }
+
+    post.setdefault("comments", []).append(new_comment_data)
     return jsonify(post), 201
 
 
