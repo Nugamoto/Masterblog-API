@@ -1,4 +1,3 @@
-import json
 import os
 from datetime import datetime
 
@@ -10,6 +9,17 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_swagger_ui import get_swaggerui_blueprint
 from passlib.hash import pbkdf2_sha256
+
+from helpers import (
+    load_json,
+    save_json,
+    validate_post_data,
+    find_post_by_id,
+    generate_new_id,
+    search_posts_by_fields,
+    sort_posts,
+    paginate_items
+)
 
 load_dotenv()
 
@@ -27,121 +37,22 @@ limiter = Limiter(
     default_limits=["100 per hour"]
 )
 
-USERS = []  # Dummy-Speicher für Benutzer (später kann hier eine DB hin)
-
-POSTS_FILE = os.path.join(os.path.dirname(__file__), "posts.json")
-
-
-def load_json(filepath=POSTS_FILE):
-    try:
-        with open(filepath, "r", encoding="utf-8") as fileobject:
-            return json.load(fileobject)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
-
-
-def save_json(content, filepath=POSTS_FILE):
-    if not isinstance(content, list):
-        raise TypeError("Provided content must be a list")
-
-    temp_filepath = filepath + ".tmp"
-
-    try:
-        with open(temp_filepath, "w", encoding="utf-8") as temp_file:
-            json.dump(content, temp_file, indent=4)
-        os.replace(temp_filepath, filepath)
-    except (IOError, OSError) as e:
-        raise IOError(f"Failed to write to file {filepath}") from e
-    except TypeError as e:
-        raise TypeError("Provided content could not be serialized to JSON") from e
-
-
-def validate_post_data(data):
-    missing_fields = []
-    if 'title' not in data or not data['title']:
-        missing_fields.append('title')
-    if 'content' not in data or not data['content']:
-        missing_fields.append('content')
-    return missing_fields
-
-
-def find_post_by_id(post_id, posts):
-    post = next((post for post in posts if str(post['id']) == str(post_id)), {})
-    return post
-
-
-def generate_new_id(data) -> int:
-    if not data:
-        return 1
-    return max(post['id'] for post in data) + 1
-
-
-def search_posts_by_fields(title_term, content_term, author_term, date_term, category_term, tag_term, posts):
-    result = []
-    seen_ids = set()
-
-    for post in posts:
-        match = False
-
-        if title_term.strip() and title_term.lower() in post.get("title", "").lower():
-            match = True
-        if content_term.strip() and content_term.lower() in post.get("content", "").lower():
-            match = True
-        if author_term.strip() and author_term.lower() in post.get("author", "").lower():
-            match = True
-        if date_term.strip() and date_term in post.get("date", ""):
-            match = True
-        if category_term.strip() and category_term.lower() in post.get("category", "").lower():
-            match = True
-        if tag_term.strip() and tag_term.lower() in [t.lower() for t in post.get("tags", [])]:
-            match = True
-
-        if match and post["id"] not in seen_ids:
-            result.append(post)
-            seen_ids.add(post["id"])
-
-    return result
-
-
-def sort_posts(posts, field, order="asc"):
-    order_parameter = (order == "desc")
-
-    def sort_key(post):
-        if field == "date":
-            try:
-                return datetime.strptime(post.get("date", ""), "%Y-%m-%d")
-            except ValueError:
-                return datetime.min
-        if field == "comments":
-            return len(post.get("comments", []))
-        if field == "tags":
-            tag_terms = [t.strip().lower() for t in request.args.get("tag", "").split(",") if t.strip()]
-            post_tags = [t.lower() for t in post.get("tags", [])]
-            return sum(1 for tag in tag_terms if tag in post_tags)
-        return post.get(field, "")
-
-    sorted_posts = sorted(posts, key=sort_key, reverse=order_parameter)
-    return sorted_posts
-
-
-def paginate_items(items):
-    try:
-        page = int(request.args.get("page", 1))
-        limit = int(request.args.get("limit", 10))
-    except ValueError:
-        return jsonify({"error": "page and limit must be integers."}), 400, True
-
-    if page < 1 or limit < 1:
-        return jsonify({"error": "page and limit must be greater than 0."}), 400, True
-
-    start = (page - 1) * limit
-    end = start + limit
-    return items[start:end], None, False
+USERS = []
 
 
 @app.route("/api/v1/register", methods=["POST"])
 @limiter.limit("10 per hour")
 def register():
+    """
+    Register a new user.
+
+    Expects a JSON body with 'username' and 'password'. If either is missing or the username
+    already exists, returns a 400 error. On successful registration, the password is hashed
+    and the user is added to the in-memory USERS list.
+
+    Returns:
+        JSON response with a success message and HTTP status code 201 on success, or an error message otherwise.
+    """
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
@@ -160,6 +71,15 @@ def register():
 @app.route("/api/v1/login", methods=["POST"])
 @limiter.limit("5 per minute")
 def login():
+    """
+    Authenticate a user and issue a JWT token.
+
+    Expects a JSON body with 'username' and 'password'. If the credentials are invalid,
+    returns a 401 error. On success, returns a JSON response containing the access token.
+
+    Returns:
+        JSON with the access_token on success, or an error message on failure.
+    """
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
@@ -174,6 +94,20 @@ def login():
 
 @app.route('/api/v1/posts', methods=['GET', 'POST'])
 def handle_posts():
+    """
+    Retrieve all blog posts or create a new blog post.
+
+    GET:
+        Returns a paginated list of posts, with optional sorting if query parameters are provided.
+    POST:
+        Creates a new blog post. Expects a JSON body with at least 'title' and 'content'.
+        Additional fields such as 'date', 'category', 'tags', and 'comments' are optional.
+        If 'date' is not provided, the current date is used. The author is determined from the JWT token.
+        Requires JWT authentication.
+
+    Returns:
+        A JSON response with the requested list of posts for GET requests, or the newly created post for POST requests.
+    """
     if request.method == 'POST':
         @jwt_required()
         def protected_create_post():
@@ -233,6 +167,18 @@ def handle_posts():
 @app.route('/api/v1/posts/<int:post_id>', methods=['DELETE'])
 @jwt_required()
 def delete_post(post_id):
+    """
+    Delete a blog post by its ID.
+
+    Requires JWT authentication. Only the post's author (as determined from the JWT token)
+    is allowed to delete the post.
+
+    Args:
+        post_id (int): The unique identifier of the post to delete.
+
+    Returns:
+        A JSON response with a success message on deletion or an error message if not authorized or not found.
+    """
     posts = load_json()
     post = find_post_by_id(post_id, posts)
 
@@ -251,6 +197,20 @@ def delete_post(post_id):
 @app.route('/api/v1/posts/<int:post_id>', methods=['PUT'])
 @jwt_required()
 def update_post(post_id):
+    """
+    Update an existing blog post by its ID.
+
+    Requires JWT authentication. Expects a JSON body with updated post data.
+    The 'author' field, if provided, is ignored (the author is determined from the JWT token).
+    If a 'date' is provided, it must be in the format YYYY-MM-DD.
+    Only the author of the post is allowed to update it.
+
+    Args:
+        post_id (int): The unique identifier of the post to update.
+
+    Returns:
+        The updated post as JSON on success, or an error message on failure.
+    """
     posts = load_json()
     new_post_data = request.get_json()
     missing_data = validate_post_data(new_post_data)
@@ -265,11 +225,9 @@ def update_post(post_id):
     if post.get("author") != current_user:
         return jsonify({"error": "You are not authorized to update this post."}), 403
 
-    # Remove 'author' if someone tries to override it
     if "author" in new_post_data:
         del new_post_data["author"]
 
-    # Validate 'date' format if provided
     if "date" in new_post_data:
         try:
             datetime.strptime(new_post_data["date"], "%Y-%m-%d")
@@ -283,6 +241,15 @@ def update_post(post_id):
 
 @app.route('/api/v1/posts/search')
 def search_post():
+    """
+    Search for blog posts using various fields.
+
+    Accepts optional query parameters: title, content, author, date, category, and tag.
+    Returns a paginated list of posts that match any of the provided search criteria.
+
+    Returns:
+        A JSON array of posts that match the search criteria.
+    """
     title_term = request.args.get('title', '')
     content_term = request.args.get('content', '')
     author_term = request.args.get('author', '')
@@ -302,6 +269,18 @@ def search_post():
 @app.route('/api/v1/posts/<int:post_id>/comments', methods=['POST'])
 @jwt_required()
 def add_comment(post_id):
+    """
+    Add a comment to a blog post.
+
+    Requires JWT authentication. Expects a JSON body with a 'text' field.
+    The comment's author is derived from the JWT token, and the current timestamp is added.
+
+    Args:
+        post_id (int): The unique identifier of the post to which the comment is added.
+
+    Returns:
+        The updated post (with the new comment) as JSON on success, or an error message on failure.
+    """
     posts = load_json()
     post = find_post_by_id(post_id, posts)
     if not post:
@@ -322,8 +301,8 @@ def add_comment(post_id):
     return jsonify(post), 201
 
 
-SWAGGER_URL = "/api/docs"  # URL unter der Swagger erreichbar ist
-API_URL = "/static/masterblog.json"  # Pfad zur Swagger-Definition
+SWAGGER_URL = "/api/docs"
+API_URL = "/static/masterblog.json"
 
 swagger_ui_blueprint = get_swaggerui_blueprint(
     SWAGGER_URL,
