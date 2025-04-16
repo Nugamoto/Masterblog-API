@@ -70,23 +70,29 @@ def generate_new_id(data) -> int:
     return new_id
 
 
-def search_posts_by_fields(title_term, content_term, posts):
+def search_posts_by_fields(title_term, content_term, author_term, date_term, category_term, tag_term, posts):
     result = []
     seen_ids = set()
 
-    if title_term.strip():
-        title_term = title_term.lower()
-        for post in posts:
-            if title_term in post["title"].lower() and post["id"] not in seen_ids:
-                result.append(post)
-                seen_ids.add(post["id"])
+    for post in posts:
+        match = False
 
-    if content_term.strip():
-        content_term = content_term.lower()
-        for post in posts:
-            if content_term in post["content"].lower() and post["id"] not in seen_ids:
-                result.append(post)
-                seen_ids.add(post["id"])
+        if title_term.strip() and title_term.lower() in post.get("title", "").lower():
+            match = True
+        if content_term.strip() and content_term.lower() in post.get("content", "").lower():
+            match = True
+        if author_term.strip() and author_term.lower() in post.get("author", "").lower():
+            match = True
+        if date_term.strip() and date_term in post.get("date", ""):
+            match = True
+        if category_term.strip() and category_term.lower() in post.get("category", "").lower():
+            match = True
+        if tag_term.strip() and tag_term.lower() in [t.lower() for t in post.get("tags", [])]:
+            match = True
+
+        if match and post["id"] not in seen_ids:
+            result.append(post)
+            seen_ids.add(post["id"])
 
     return result
 
@@ -250,16 +256,12 @@ def update_post(post_id):
 def search_post():
     title_term = request.args.get('title', '')
     content_term = request.args.get('content', '')
-    category = request.args.get('category', '')
-    tag = request.args.get('tag', '')
+    author_term = request.args.get('author', '')
+    date_term = request.args.get('date', '')
+    category_term = request.args.get('category', '')
+    tag_term = request.args.get('tag', '')
 
-    results = POSTS if not (title_term.strip() or content_term.strip()) else search_posts_by_fields(title_term,
-                                                                                                    content_term, POSTS)
-
-    if category:
-        results = [post for post in results if category.lower() in post.get("category", "").lower()]
-    if tag:
-        results = [post for post in results if tag.lower() in [t.lower() for t in post.get("tags", [])]]
+    results = search_posts_by_fields(title_term, content_term, author_term, date_term, category_term, tag_term, POSTS)
 
     paginated_items, error_response, is_error = paginate_items(results)
     if is_error:
