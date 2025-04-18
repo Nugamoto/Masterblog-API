@@ -18,17 +18,17 @@ from helpers import (
     generate_new_id,
     search_posts_by_fields,
     sort_posts,
-    paginate_items
+    paginate_items,
+    POSTS_FILE,
+    USERS_FILE
 )
 
 load_dotenv()
 
 app = Flask(__name__)
-
-CORS(app)  # This will enable CORS for all routes (Cross-Origin Resource Sharing)
+CORS(app)
 
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
-
 jwt = JWTManager(app)
 
 limiter = Limiter(
@@ -36,8 +36,6 @@ limiter = Limiter(
     app=app,
     default_limits=["100 per hour"]
 )
-
-USERS = []
 
 
 @app.route("/api/v1/register", methods=["POST"])
@@ -48,7 +46,7 @@ def register():
 
     Expects a JSON body with 'username' and 'password'. If either is missing or the username
     already exists, returns a 400 error. On successful registration, the password is hashed
-    and the user is added to the in-memory USERS list.
+    and the user is added to the users.json file.
 
     Returns:
         JSON response with a success message and HTTP status code 201 on success, or an error message otherwise.
@@ -60,11 +58,16 @@ def register():
     if not username or not password:
         return jsonify({"error": "Username and password are required"}), 400
 
-    if any(user["username"] == username for user in USERS):
+    users = load_json(filepath=USERS_FILE)
+
+    if any(user["username"] == username for user in users):
         return jsonify({"error": "Username already exists"}), 400
 
     hashed_password = pbkdf2_sha256.hash(password)
-    USERS.append({"username": username, "password": hashed_password})
+    users.append({"username": username, "password": hashed_password})
+
+    save_json(users, filepath=USERS_FILE)
+
     return jsonify({"message": f"User {username} registered successfully"}), 201
 
 
@@ -84,7 +87,9 @@ def login():
     username = data.get("username")
     password = data.get("password")
 
-    user = next((user for user in USERS if user["username"] == username), None)
+    users = load_json(filepath=USERS_FILE)
+    user = next((user for user in users if user["username"] == username), None)
+
     if not user or not pbkdf2_sha256.verify(password, user["password"]):
         return jsonify({"error": "Invalid username or password"}), 401
 
@@ -111,7 +116,7 @@ def handle_posts():
     if request.method == 'POST':
         @jwt_required()
         def protected_create_post():
-            all_posts = load_json()
+            all_posts = load_json(filepath=POSTS_FILE)
             new_post = request.get_json()
 
             missing_data = validate_post_data(new_post)
@@ -128,12 +133,12 @@ def handle_posts():
             new_post["author"] = get_jwt_identity()
 
             all_posts.append(new_post)
-            save_json(all_posts)
+            save_json(all_posts, filepath=POSTS_FILE)
             return jsonify(new_post), 201
 
         return protected_create_post()
 
-    posts = load_json()
+    posts = load_json(filepath=POSTS_FILE)
 
     paginated_items, error_response, is_error = paginate_items(posts)
     if is_error:
@@ -141,12 +146,12 @@ def handle_posts():
 
     required_fields = ["id", "title", "content", "author", "date", "category", "comments", "tags"]
     field_to_sort = request.args.get("sort", "").lower()
-    if field_to_sort and not field_to_sort in required_fields:
+    if field_to_sort and field_to_sort not in required_fields:
         return jsonify({"error": f"'{field_to_sort}' is not a valid field to sort. Try: {required_fields}"}), 400
 
     required_direction = ["asc", "desc"]
     sort_direction = request.args.get("direction", "").lower()
-    if sort_direction and not sort_direction in required_direction:
+    if sort_direction and sort_direction not in required_direction:
         return jsonify(
             {"error": f"'{sort_direction}' is not a valid direction to sort. Try: {required_direction}"}), 400
 
@@ -179,7 +184,7 @@ def delete_post(post_id):
     Returns:
         A JSON response with a success message on deletion or an error message if not authorized or not found.
     """
-    posts = load_json()
+    posts = load_json(filepath=POSTS_FILE)
     post = find_post_by_id(post_id, posts)
 
     if not post:
@@ -190,7 +195,7 @@ def delete_post(post_id):
         return jsonify({"error": "You are not authorized to delete this post."}), 403
 
     posts.remove(post)
-    save_json(posts)
+    save_json(posts, filepath=POSTS_FILE)
     return jsonify({"message": f"Post with id {post_id} has been deleted successfully."}), 200
 
 
@@ -211,7 +216,7 @@ def update_post(post_id):
     Returns:
         The updated post as JSON on success, or an error message on failure.
     """
-    posts = load_json()
+    posts = load_json(filepath=POSTS_FILE)
     new_post_data = request.get_json()
     missing_data = validate_post_data(new_post_data)
     if missing_data:
@@ -235,7 +240,7 @@ def update_post(post_id):
             return jsonify({"error": "Date must be in format YYYY-MM-DD"}), 400
 
     post.update(new_post_data)
-    save_json(posts)
+    save_json(posts, filepath=POSTS_FILE)
     return jsonify(post), 200
 
 
@@ -257,7 +262,7 @@ def search_post():
     category_term = request.args.get('category', '')
     tag_term = request.args.get('tag', '')
 
-    posts = load_json()
+    posts = load_json(filepath=POSTS_FILE)
     results = search_posts_by_fields(title_term, content_term, author_term, date_term, category_term, tag_term, posts)
 
     paginated_items, error_response, is_error = paginate_items(results)
@@ -281,7 +286,7 @@ def add_comment(post_id):
     Returns:
         The updated post (with the new comment) as JSON on success, or an error message on failure.
     """
-    posts = load_json()
+    posts = load_json(filepath=POSTS_FILE)
     post = find_post_by_id(post_id, posts)
     if not post:
         return jsonify({"error": f"Post with id {post_id} not found."}), 404
@@ -297,7 +302,7 @@ def add_comment(post_id):
     }
 
     post.setdefault("comments", []).append(new_comment_data)
-    save_json(posts)
+    save_json(posts, filepath=POSTS_FILE)
     return jsonify(post), 201
 
 
@@ -311,5 +316,6 @@ swagger_ui_blueprint = get_swaggerui_blueprint(
 )
 
 app.register_blueprint(swagger_ui_blueprint, url_prefix=SWAGGER_URL)
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5002, debug=True)
