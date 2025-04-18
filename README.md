@@ -1,3 +1,4 @@
+> 🇩🇪 Für die deutsche Version siehe [README.de.md](README.de.md)
 # Masterblog API 📝⚡️
 
 A minimal yet feature‑rich **Flask + JWT** backend (with a micro‑frontend) for managing blog posts.
