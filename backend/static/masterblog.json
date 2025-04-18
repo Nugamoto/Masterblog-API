@@ -12,24 +12,20 @@
   ],
   "tags": [
     {
-      "name": "Post",
-      "description": "Operations related to blog posts"
-    },
-    {
       "name": "User",
       "description": "Operations related to user authentication"
+    },
+    {
+      "name": "Post",
+      "description": "Operations related to blog posts"
     }
   ],
   "paths": {
     "/posts": {
       "get": {
         "summary": "Returns all posts",
-        "tags": [
-          "Post"
-        ],
-        "produces": [
-          "application/json"
-        ],
+        "tags": ["Post"],
+        "produces": ["application/json"],
         "parameters": [
           {
             "name": "sort",
@@ -74,15 +70,9 @@
       },
       "post": {
         "summary": "Create a new blog post",
-        "tags": [
-          "Post"
-        ],
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
+        "tags": ["Post"],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
         "parameters": [
           {
             "in": "body",
@@ -112,15 +102,9 @@
     "/register": {
       "post": {
         "summary": "Register a new user",
-        "tags": [
-          "User"
-        ],
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
+        "tags": ["User"],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
         "parameters": [
           {
             "in": "body",
@@ -131,10 +115,12 @@
               "required": ["username", "password"],
               "properties": {
                 "username": {
-                  "type": "string"
+                  "type": "string",
+                  "example": "newuser"
                 },
                 "password": {
-                  "type": "string"
+                  "type": "string",
+                  "example": "securepassword123"
                 }
               }
             }
@@ -153,15 +139,9 @@
     "/login": {
       "post": {
         "summary": "Authenticate user and get JWT",
-        "tags": [
-          "User"
-        ],
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
+        "tags": ["User"],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
         "parameters": [
           {
             "in": "body",
@@ -172,10 +152,12 @@
               "required": ["username", "password"],
               "properties": {
                 "username": {
-                  "type": "string"
+                  "type": "string",
+                  "example": "admin"
                 },
                 "password": {
-                  "type": "string"
+                  "type": "string",
+                  "example": "admin123"
                 }
               }
             }
@@ -202,15 +184,9 @@
     "/posts/{id}": {
       "put": {
         "summary": "Update an existing post",
-        "tags": [
-          "Post"
-        ],
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
+        "tags": ["Post"],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
         "parameters": [
           {
             "name": "id",
@@ -240,14 +216,15 @@
           },
           "401": {
             "description": "Unauthorized (JWT required)"
+          },
+          "404": {
+            "description": "Post not found"
           }
         }
       },
       "delete": {
         "summary": "Delete a blog post",
-        "tags": [
-          "Post"
-        ],
+        "tags": ["Post"],
         "parameters": [
           {
             "name": "id",
@@ -273,43 +250,15 @@
     "/posts/search": {
       "get": {
         "summary": "Search posts by fields",
-        "tags": [
-          "Post"
-        ],
-        "produces": [
-          "application/json"
-        ],
+        "tags": ["Post"],
+        "produces": ["application/json"],
         "parameters": [
-          {
-            "name": "title",
-            "in": "query",
-            "type": "string"
-          },
-          {
-            "name": "content",
-            "in": "query",
-            "type": "string"
-          },
-          {
-            "name": "author",
-            "in": "query",
-            "type": "string"
-          },
-          {
-            "name": "date",
-            "in": "query",
-            "type": "string"
-          },
-          {
-            "name": "category",
-            "in": "query",
-            "type": "string"
-          },
-          {
-            "name": "tag",
-            "in": "query",
-            "type": "string"
-          }
+          { "name": "title", "in": "query", "type": "string" },
+          { "name": "content", "in": "query", "type": "string" },
+          { "name": "author", "in": "query", "type": "string" },
+          { "name": "date", "in": "query", "type": "string" },
+          { "name": "category", "in": "query", "type": "string" },
+          { "name": "tag", "in": "query", "type": "string" }
         ],
         "responses": {
           "200": {
@@ -327,15 +276,9 @@
     "/posts/{id}/comments": {
       "post": {
         "summary": "Add a comment to a blog post",
-        "tags": [
-          "Post"
-        ],
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
+        "tags": ["Post"],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
         "parameters": [
           {
             "name": "id",
@@ -353,7 +296,8 @@
               "required": ["text"],
               "properties": {
                 "text": {
-                  "type": "string"
+                  "type": "string",
+                  "example": "Great post!"
                 }
               }
             }
@@ -383,74 +327,45 @@
     "Post": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "integer"
-        },
-        "title": {
-          "type": "string"
-        },
-        "content": {
-          "type": "string"
-        },
-        "author": {
-          "type": "string"
-        },
-        "date": {
-          "type": "string"
-        },
-        "category": {
-          "type": "string"
-        },
+        "id": { "type": "integer" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "author": { "type": "string" },
+        "date": { "type": "string" },
+        "category": { "type": "string" },
         "tags": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" }
         },
         "comments": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "author": {
-                "type": "string"
-              },
-              "text": {
-                "type": "string"
-              },
-              "timestamp": {
-                "type": "string"
-              }
-            }
+            "$ref": "#/definitions/Comment"
           }
         }
       }
     },
     "NewPost": {
       "type": "object",
-      "required": [
-        "title",
-        "content"
-      ],
+      "required": ["title", "content"],
       "properties": {
-        "title": {
-          "type": "string"
-        },
-        "content": {
-          "type": "string"
-        },
-        "date": {
-          "type": "string"
-        },
-        "category": {
-          "type": "string"
-        },
+        "title": { "type": "string", "example": "My first blog post" },
+        "content": { "type": "string", "example": "This is the content of the post." },
+        "date": { "type": "string", "example": "2025-04-18" },
+        "category": { "type": "string", "example": "Tech" },
         "tags": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" },
+          "example": ["flask", "swagger"]
         }
+      }
+    },
+    "Comment": {
+      "type": "object",
+      "properties": {
+        "author": { "type": "string", "example": "jane_doe" },
+        "text": { "type": "string", "example": "Really helpful post!" },
+        "timestamp": { "type": "string", "example": "2025-04-18 14:22" }
       }
     }
   }
