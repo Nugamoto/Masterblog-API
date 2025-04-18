@@ -3,27 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blog Posts</title>
+    <title>Masterblog API - Blog Posts</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="static/styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>📚 Blog Posts</h1>
-        <div class="input-field">
-            <input type="text" id="api-base-url" placeholder="Enter API Base URL" value="http://127.0.0.1:5002/api">
-            <button onclick="loadPosts()">Load Posts</button>
+<div class="container">
+    <h1>📚 Blog Posts</h1>
+
+    <!-- Dark Mode Toggle -->
+    <div class="dark-toggle">
+        <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+    </div>
+
+    <!-- API Base URL -->
+    <div class="input-field">
+        <input type="text" id="api-base-url" placeholder="Enter API Base URL" value="http://127.0.0.1:5002/api">
+        <button onclick="loadPosts()">Load Posts</button>
+    </div>
+
+    <!-- Auth Block -->
+    <section class="section-block auth-container">
+        <div class="auth-header">
+            <h2>User Authentication</h2>
+            <button class="logout-button" onclick="logoutUser()">Logout</button>
         </div>
+        <div id="logged-in-user" class="user-info">Not logged in</div>
+
+        <div class="auth-flex">
+            <!-- Register -->
+            <div class="auth-box">
+                <h3>Register</h3>
+                <div class="input-field">
+                    <input type="text" id="register-username" placeholder="Register Username">
+                </div>
+                <div class="input-field">
+                    <input type="password" id="register-password" placeholder="Register Password">
+                </div>
+                <div class="input-field">
+                    <button onclick="registerUser()">Register</button>
+                </div>
+            </div>
+
+            <!-- Login -->
+            <div class="auth-box">
+                <h3>Login</h3>
+                <div class="input-field">
+                    <input type="text" id="login-username" placeholder="Login Username">
+                </div>
+                <div class="input-field">
+                    <input type="password" id="login-password" placeholder="Login Password">
+                </div>
+                <div class="input-field">
+                    <button onclick="loginUser()">Login</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Add Post Block -->
+    <section class="section-block">
+        <h2>Add a New Post</h2>
         <div class="input-field">
             <input type="text" id="post-title" placeholder="Enter Post Title">
             <input type="text" id="post-content" placeholder="Enter Post Content">
+            <input type="text" id="post-category" placeholder="Enter Post Category">
+            <input type="text" id="post-tags" placeholder="Enter Post Tags (comma-separated)">
             <button onclick="addPost()">Add Post</button>
         </div>
-        <div id="post-container">
-            <!-- Blog posts will be inserted here by JavaScript -->
-        </div>
-    </div>
+    </section>
 
-    <script src="static/main.js"></script>
+    <!-- Search Block -->
+    <section class="section-block">
+        <h2>Search Posts</h2>
+        <div class="input-field">
+            <input type="text" id="search-title" placeholder="Search Title">
+            <input type="text" id="search-author" placeholder="Search Author">
+            <input type="text" id="search-category" placeholder="Search Category">
+            <input type="text" id="search-tag" placeholder="Search Tag(s) (comma separated)">
+            <button onclick="searchPosts()">Search</button>
+        </div>
+    </section>
+
+    <!-- Sort Block -->
+    <section class="section-block">
+        <h2>Sort Posts</h2>
+        <div class="input-field">
+            <select id="sort-field">
+                <option value="">-- Select a field --</option>
+                <option value="title">Title</option>
+                <option value="date">Date</option>
+                <option value="category">Category</option>
+                <option value="comments">Comments</option>
+                <option value="tags">Tags</option>
+                <option value="author">Author</option>
+            </select>
+            <select id="sort-direction">
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+            </select>
+            <button onclick="loadPosts()">Sort</button>
+        </div>
+    </section>
+    <!-- Pagination Block -->
+    <section class="section-block">
+        <h2>Pagination</h2>
+        <div class="input-field">
+            <input type="number" id="page-number" placeholder="Page Number" value="1">
+            <input type="number" id="limit-number" placeholder="Limit per Page" value="20">
+            <button onclick="loadPosts()">Go</button>
+        </div>
+    </section>
+
+    <!-- Posts Display -->
+    <section id="post-container"></section>
+</div>
+
+<!-- Floating Add Button -->
+<button class="floating-add-post" onclick="scrollToAddPost()">＋ Add Post</button>
+
+<script src="static/main.js"></script>
 </body>
 </html>
