@@ -1,24 +1,16 @@
 import json
 import os
 from datetime import datetime
+from typing import List, Dict, Tuple, Union
 
 from flask import jsonify, request
 
 POSTS_FILE = os.path.join(os.path.dirname(__file__), "posts.json")
+USERS_FILE = os.path.join(os.path.dirname(__file__), "users.json")
 
 
-def load_json(filepath=POSTS_FILE):
-    """Load JSON data from the specified file.
-
-    This function attempts to open and parse the JSON file located at the given
-    filepath. If the file does not exist or contains invalid JSON, an empty list is returned.
-
-    Args:
-        filepath (str): The path to the JSON file. Defaults to POSTS_FILE.
-
-    Returns:
-        list: A list containing the JSON data, or an empty list if an error occurs.
-    """
+def load_json(filepath: str) -> List[Dict]:
+    """Load JSON data from the specified file."""
     try:
         with open(filepath, "r", encoding="utf-8") as fileobject:
             return json.load(fileobject)
@@ -26,21 +18,8 @@ def load_json(filepath=POSTS_FILE):
         return []
 
 
-def save_json(content, filepath=POSTS_FILE):
-    """Save content as JSON data into the specified file atomically.
-
-    The function first writes the data to a temporary file and then atomically
-    replaces the original file with it. This prevents file corruption during
-    unexpected interruptions.
-
-    Args:
-        content (list): The content to be saved. Must be a list.
-        filepath (str): The path to the JSON file. Defaults to POSTS_FILE.
-
-    Raises:
-        TypeError: If the provided content is not a list or cannot be serialized to JSON.
-        IOError: If writing to the file fails.
-    """
+def save_json(content: List[Dict], filepath: str) -> None:
+    """Save content as JSON data into the specified file atomically."""
     if not isinstance(content, list):
         raise TypeError("Provided content must be a list")
 
@@ -56,18 +35,8 @@ def save_json(content, filepath=POSTS_FILE):
         raise TypeError("Provided content could not be serialized to JSON") from e
 
 
-def validate_post_data(data):
-    """Validate that the essential fields of a blog post are present.
-
-    This function checks whether the provided data dictionary contains
-    non-empty 'title' and 'content' fields.
-
-    Args:
-        data (dict): The blog post data to validate.
-
-    Returns:
-        list: A list of missing field names. An empty list indicates that all required fields are present.
-    """
+def validate_post_data(data: Dict) -> List[str]:
+    """Validate that the essential fields of a blog post are present."""
     missing_fields = []
     if 'title' not in data or not data['title']:
         missing_fields.append('title')
@@ -76,58 +45,28 @@ def validate_post_data(data):
     return missing_fields
 
 
-def find_post_by_id(post_id, posts):
-    """Find and return a post by its ID from a list of posts.
-
-    The function searches for a post whose 'id' matches the provided post_id.
-
-    Args:
-        post_id (int or str): The identifier of the post.
-        posts (list): A list of post dictionaries.
-
-    Returns:
-        dict: The post matching the given ID. If no matching post is found, returns an empty dictionary.
-    """
-    post = next((post for post in posts if str(post['id']) == str(post_id)), {})
-    return post
+def find_post_by_id(post_id: Union[int, str], posts: List[Dict]) -> Dict:
+    """Find and return a post by its ID from a list of posts."""
+    return next((post for post in posts if str(post.get('id')) == str(post_id)), {})
 
 
-def generate_new_id(data) -> int:
-    """Generate a new unique ID for a blog post.
-
-    The new ID is determined by taking the maximum current ID in the data and adding 1.
-    If the data list is empty, returns 1.
-
-    Args:
-        data (list): A list of post dictionaries.
-
-    Returns:
-        int: The new post ID.
-    """
+def generate_new_id(data: List[Dict]) -> int:
+    """Generate a new unique ID for a blog post."""
     if not data:
         return 1
-    return max(post['id'] for post in data) + 1
+    return max((post.get("id", 0) for post in data), default=0) + 1
 
 
-def search_posts_by_fields(title_term, content_term, author_term, date_term, category_term, tag_term, posts):
-    """Search for blog posts matching any of the provided search criteria.
-
-    This function checks each post to see if any of the search terms (for title, content,
-    author, date, category, and tags) are present. A post is included in the result if at least one field matches.
-    Duplicate posts are avoided using an internal seen_ids set.
-
-    Args:
-        title_term (str): Search term for the title.
-        content_term (str): Search term for the content.
-        author_term (str): Search term for the author.
-        date_term (str): Search term for the date.
-        category_term (str): Search term for the category.
-        tag_term (str): Search term for the tags.
-        posts (list): The list of posts to search within.
-
-    Returns:
-        list: A list of posts that match any of the search criteria.
-    """
+def search_posts_by_fields(
+    title_term: str,
+    content_term: str,
+    author_term: str,
+    date_term: str,
+    category_term: str,
+    tag_term: str,
+    posts: List[Dict]
+) -> List[Dict]:
+    """Search for blog posts matching any of the provided search criteria."""
     result = []
     seen_ids = set()
 
@@ -147,33 +86,18 @@ def search_posts_by_fields(title_term, content_term, author_term, date_term, cat
         if tag_term.strip() and tag_term.lower() in [t.lower() for t in post.get("tags", [])]:
             match = True
 
-        if match and post["id"] not in seen_ids:
+        if match and post.get("id") not in seen_ids:
             result.append(post)
-            seen_ids.add(post["id"])
+            seen_ids.add(post.get("id"))
 
     return result
 
 
-def sort_posts(posts, field, order="asc"):
-    """Sort a list of posts based on a specified field.
-
-    The sorting behavior differs based on the field:
-    - For 'date', string dates are converted to datetime objects.
-    - For 'comments', sorting is based on the number of comments.
-    - For 'tags', sorting is based on the count of matching tags from the query parameter.
-    - For other fields, the post's field value is used directly.
-
-    Args:
-        posts (list): The list of posts to sort.
-        field (str): The field by which to sort.
-        order (str, optional): 'asc' for ascending or 'desc' for descending sort order. Defaults to "asc".
-
-    Returns:
-        list: The sorted list of posts.
-    """
+def sort_posts(posts: List[Dict], field: str, order: str = "asc") -> List[Dict]:
+    """Sort a list of posts based on a specified field."""
     order_parameter = (order == "desc")
 
-    def sort_key(post):
+    def sort_key(post: Dict):
         if field == "date":
             try:
                 return datetime.strptime(post.get("date", ""), "%Y-%m-%d")
@@ -187,34 +111,19 @@ def sort_posts(posts, field, order="asc"):
             return sum(1 for tag in tag_terms if tag in post_tags)
         return post.get(field, "")
 
-    sorted_posts = sorted(posts, key=sort_key, reverse=order_parameter)
-    return sorted_posts
+    return sorted(posts, key=sort_key, reverse=order_parameter)
 
 
-def paginate_items(items):
-    """Paginate a list of items based on query parameters 'page' and 'limit'.
-
-    The function reads the 'page' and 'limit' parameters from the request's query string,
-    calculates the appropriate slice of the items list, and returns the paginated items.
-    In case of an invalid parameter, an error response is returned.
-
-    Args:
-        items (list): The list of items to paginate.
-
-    Returns:
-        tuple: A tuple containing:
-            - The paginated list of items (if successful),
-            - An error response (if an error occurred, otherwise None),
-            - A boolean flag indicating whether an error occurred.
-    """
+def paginate_items(items: List[Dict]) -> Tuple[List[Dict], Union[Dict, None], bool]:
+    """Paginate a list of items based on query parameters 'page' and 'limit'."""
     try:
         page = int(request.args.get("page", 1))
         limit = int(request.args.get("limit", 10))
     except ValueError:
-        return jsonify({"error": "page and limit must be integers."}), 400, True
+        return [], jsonify({"error": "page and limit must be integers."}), True
 
     if page < 1 or limit < 1:
-        return jsonify({"error": "page and limit must be greater than 0."}), 400, True
+        return [], jsonify({"error": "page and limit must be greater than 0."}), True
 
     start = (page - 1) * limit
     end = start + limit
